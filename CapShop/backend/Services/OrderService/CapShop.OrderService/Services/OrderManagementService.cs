@@ -1,0 +1,165 @@
+﻿using CapShop.OrderService.Dtos;
+using CapShop.OrderService.Models;
+using CapShop.OrderService.Repositories;
+
+namespace CapShop.OrderService.Services;
+
+public class OrderManagementService : IOrderManagementService
+{
+    private readonly IOrderRepository _orders;
+    private readonly ICartRepository _carts;
+    private readonly ILogger<OrderManagementService> _logger;
+
+    public OrderManagementService(IOrderRepository orders, ICartRepository carts, ILogger<OrderManagementService> logger)
+    {
+        _orders = orders;
+        _carts = carts;
+        _logger = logger;
+    }
+
+    public async Task<OrderResponse> CheckoutAsync(Guid userId, CheckoutRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.ShippingAddress))
+            throw new ArgumentException("Shipping address is required.");
+
+        if (string.IsNullOrWhiteSpace(request.ShippingPincode) || request.ShippingPincode.Trim().Length != 6)
+            throw new ArgumentException("Valid 6-digit pincode is required.");
+
+        var cart = await _carts.GetByUserIdAsync(userId);
+
+        if (cart is null || cart.Items.Count == 0)
+            throw new InvalidOperationException("Cart is empty.");
+
+        var order = new Order
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Status = OrderStatus.PaymentPending,
+            ShippingAddress = request.ShippingAddress.Trim(),
+            ShippingCity = request.ShippingCity.Trim(),
+            ShippingPincode = request.ShippingPincode.Trim(),
+            TotalAmount = cart.Items.Sum(i => i.Price * i.Quantity)
+        };
+
+        foreach (var cartItem in cart.Items)
+        {
+            order.Items.Add(new OrderItem
+            {
+                Id = Guid.NewGuid(),
+                OrderId = order.Id,
+                ProductId = cartItem.ProductId,
+                ProductName = cartItem.ProductName,
+                Price = cartItem.Price,
+                ImageUrl = cartItem.ImageUrl,
+                Quantity = cartItem.Quantity
+            });
+        }
+
+        await _orders.AddAsync(order);
+        await _carts.ClearCartAsync(cart);
+
+        _logger.LogInformation("Order {OrderId} created for user {UserId}, amount: {Amount}", order.Id, userId, order.TotalAmount);
+
+        return MapToOrderResponse(order);
+    }
+
+    public async Task<OrderResponse> SimulatePaymentAsync(Guid userId, PaymentRequest request)
+    {
+        var order = await _orders.GetByIdAsync(request.OrderId);
+
+        if (order is null || order.UserId != userId)
+            throw new KeyNotFoundException("Order not found.");
+
+        if (order.Status != OrderStatus.PaymentPending)
+            throw new InvalidOperationException("Order is not awaiting payment.");
+
+        if (!Enum.TryParse<PaymentMethod>(request.PaymentMethod, true, out var method))
+            throw new ArgumentException("Invalid payment method. Use UPI, Card, or COD.");
+
+        order.PaymentMethod = method;
+
+        // COD always succeeds, others simulate 90% success
+        var paymentSuccess = method == PaymentMethod.COD || Random.Shared.Next(100) < 90;
+
+        if (paymentSuccess)
+        {
+            order.Status = OrderStatus.Paid;
+            order.PaidAt = DateTime.UtcNow;
+            _logger.LogInformation("Payment successful for order {OrderId}, method: {Method}", order.Id, method);
+        }
+        else
+        {
+            order.Status = OrderStatus.PaymentFailed;
+            _logger.LogWarning("Payment failed for order {OrderId}, method: {Method}", order.Id, method);
+        }
+
+        await _orders.UpdateAsync(order);
+
+        return MapToOrderResponse(order);
+    }
+
+    public async Task<List<OrderListResponse>> GetMyOrdersAsync(Guid userId)
+    {
+        var orders = await _orders.GetByUserIdAsync(userId);
+
+        return orders.Select(o => new OrderListResponse
+        {
+            Id = o.Id,
+            Status = o.Status.ToString(),
+            TotalAmount = o.TotalAmount,
+            ItemCount = o.Items.Count,
+            CreatedAt = o.CreatedAt
+        }).ToList();
+    }
+
+    public async Task<OrderResponse> GetOrderByIdAsync(Guid userId, Guid orderId)
+    {
+        var order = await _orders.GetByIdAsync(orderId);
+
+        if (order is null || order.UserId != userId)
+            throw new KeyNotFoundException("Order not found.");
+
+        return MapToOrderResponse(order);
+    }
+
+    public async Task CancelOrderAsync(Guid userId, Guid orderId)
+    {
+        var order = await _orders.GetByIdAsync(orderId);
+
+        if (order is null || order.UserId != userId)
+            throw new KeyNotFoundException("Order not found.");
+
+        if (order.Status >= OrderStatus.Packed)
+            throw new InvalidOperationException("Cannot cancel order after it has been packed.");
+
+        order.Status = OrderStatus.Cancelled;
+        await _orders.UpdateAsync(order);
+
+        _logger.LogInformation("Order {OrderId} cancelled by user {UserId}", orderId, userId);
+    }
+
+    private static OrderResponse MapToOrderResponse(Order order)
+    {
+        return new OrderResponse
+        {
+            Id = order.Id,
+            Status = order.Status.ToString(),
+            TotalAmount = order.TotalAmount,
+            PaymentMethod = order.PaymentMethod?.ToString(),
+            ShippingAddress = order.ShippingAddress,
+            ShippingCity = order.ShippingCity,
+            ShippingPincode = order.ShippingPincode,
+            CreatedAt = order.CreatedAt,
+            PaidAt = order.PaidAt,
+            Items = order.Items.Select(i => new OrderItemResponse
+            {
+                ProductId = i.ProductId,
+                ProductName = i.ProductName,
+                Price = i.Price,
+                ImageUrl = i.ImageUrl,
+                Quantity = i.Quantity,
+                Subtotal = i.Price * i.Quantity
+            }).ToList()
+        };
+    }
+}

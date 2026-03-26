@@ -16,6 +16,11 @@
         "Path": "Services\\CatalogService\\CapShop.CatalogService\\CapShop.CatalogService.csproj",
         "Action": "Start",
         "DebugTarget": "http"
+      },
+      {
+        "Path": "Services\\OrderService\\CapShop.OrderService\\CapShop.OrderService.csproj",
+        "Action": "Start",
+        "DebugTarget": "http"
       }
     ]
   }
