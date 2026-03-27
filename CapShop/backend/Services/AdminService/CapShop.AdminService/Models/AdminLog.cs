@@ -1,0 +1,12 @@
+﻿namespace CapShop.AdminService.Models;
+
+public class AdminLog
+{
+    public Guid Id { get; set; }
+    public Guid AdminUserId { get; set; }
+    public string Action { get; set; } = string.Empty;
+    public string EntityType { get; set; } = string.Empty;
+    public string EntityId { get; set; } = string.Empty;
+    public string Details { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
