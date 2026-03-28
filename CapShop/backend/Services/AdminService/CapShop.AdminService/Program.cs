@@ -24,11 +24,13 @@ builder.Services.AddDbContext<AdminDbContext>(options =>
 
 builder.Services.AddScoped<IAdminProductRepository, AdminProductRepository>();
 builder.Services.AddScoped<IAdminOrderRepository, AdminOrderRepository>();
+builder.Services.AddScoped<IAdminCategoryRepository, AdminCategoryRepository>();
 builder.Services.AddScoped<IAdminLogService, AdminLogService>();
 builder.Services.AddScoped<IProductManagementService, ProductManagementService>();
 builder.Services.AddScoped<IOrderStatusService, OrderStatusService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<ICategoryManagementService, CategoryManagementService>();
 
 var jwt = builder.Configuration.GetSection("Jwt");
 var signingKey = jwt["SigningKey"] ?? throw new InvalidOperationException("Jwt:SigningKey is missing");
