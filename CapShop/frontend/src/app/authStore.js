@@ -7,13 +7,44 @@ export const useAuthStore = create((set, get) => ({
   role: localStorage.getItem("role"),
   isLoading: true,
 
+  // Holds state when backend returns requires2FA: true
+  pendingTwoFactor: null, // { tempToken, method }
+
   login: async (email, password) => {
     const { data } = await authApi.login({ email, password });
+
+    if (data.requiresTwoFactor) {
+      set({ pendingTwoFactor: { tempToken: data.tempToken, method: data.twoFactorMethod } });
+      return { requiresTwoFactor: true, method: data.twoFactorMethod };
+    }
+
     localStorage.setItem("token", data.token);
     localStorage.setItem("role", data.role);
-    set({ token: data.token, role: data.role });
+    set({ token: data.token, role: data.role, pendingTwoFactor: null });
+    await get().fetchUser();
+    return { requiresTwoFactor: false, role: data.role };
+  },
+
+  verifyTwoFactor: async (code) => {
+    const pending = get().pendingTwoFactor;
+    if (!pending) throw new Error("No pending 2FA session.");
+
+    const { data } = await authApi.verifyTwoFactor({ tempToken: pending.tempToken, code });
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("role", data.role);
+    set({ token: data.token, role: data.role, pendingTwoFactor: null });
     await get().fetchUser();
     return data.role;
+  },
+
+  resendTwoFactor: async () => {
+    const pending = get().pendingTwoFactor;
+    if (!pending) throw new Error("No pending 2FA session.");
+    await authApi.resendTwoFactor(pending.tempToken);
+  },
+
+  cancelTwoFactor: () => {
+    set({ pendingTwoFactor: null });
   },
 
   signup: async (payload) => {
@@ -42,6 +73,6 @@ export const useAuthStore = create((set, get) => ({
   logout: () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
-    set({ user: null, token: null, role: null });
+    set({ user: null, token: null, role: null, pendingTwoFactor: null });
   },
 }));

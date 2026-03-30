@@ -1,8 +1,70 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  FaMicrochip, FaTshirt, FaBook, FaHome, FaTag,
+  FaDumbbell, FaShoePrints, FaGem, FaGamepad,
+  FaHeartbeat, FaUtensils, FaCouch, FaPencilAlt,
+  FaCar, FaTools, FaMobileAlt, FaLaptop,
+  FaCamera, FaSuitcase, FaRing, FaBaby,
+  FaPaw, FaBriefcase, FaHardHat,
+} from "react-icons/fa";
 import { useProductStore } from "../app/productStore";
 import ProductCard from "../components/product/ProductCard";
 import Spinner from "../components/ui/Spinner";
+
+const CATEGORY_ICONS = {
+  // Seeded categories
+  electronics:        FaMicrochip,
+  clothing:           FaTshirt,
+  books:              FaBook,
+  "home & kitchen":   FaHome,
+  // Common admin-added categories
+  helmets:            FaHardHat,
+  sports:             FaDumbbell,
+  "sports & fitness": FaDumbbell,
+  fitness:            FaDumbbell,
+  footwear:           FaShoePrints,
+  shoes:              FaShoePrints,
+  accessories:        FaGem,
+  jewellery:          FaRing,
+  jewelry:            FaRing,
+  toys:               FaGamepad,
+  "toys & games":     FaGamepad,
+  beauty:             FaHeartbeat,
+  "health & beauty":  FaHeartbeat,
+  "personal care":    FaHeartbeat,
+  food:               FaUtensils,
+  grocery:            FaUtensils,
+  groceries:          FaUtensils,
+  furniture:          FaCouch,
+  stationery:         FaPencilAlt,
+  "office supplies":  FaPencilAlt,
+  automotive:         FaCar,
+  vehicles:           FaCar,
+  tools:              FaTools,
+  hardware:           FaTools,
+  mobile:             FaMobileAlt,
+  phones:             FaMobileAlt,
+  smartphones:        FaMobileAlt,
+  laptops:            FaLaptop,
+  computers:          FaLaptop,
+  cameras:            FaCamera,
+  photography:        FaCamera,
+  bags:               FaSuitcase,
+  luggage:            FaSuitcase,
+  travel:             FaSuitcase,
+  baby:               FaBaby,
+  kids:               FaBaby,
+  children:           FaBaby,
+  pets:               FaPaw,
+  "pet supplies":     FaPaw,
+  office:             FaBriefcase,
+};
+
+function getCategoryIcon(name) {
+  return CATEGORY_ICONS[name?.toLowerCase()] ?? FaTag;
+}
 
 // All slides use bg-[#010101] to match navbar brand-primary exactly.
 // Only blobs change — one is always brand purple for consistency.
@@ -52,6 +114,26 @@ const TAGLINES = [
   "Built for those who demand more.",
 ];
 
+const heroItemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: (i) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.15, duration: 0.4, ease: "easeOut" },
+  }),
+  exit: { opacity: 0, y: -8, transition: { duration: 0.2 } },
+};
+
+const categoryContainerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.08 } },
+};
+
+const categoryItemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: "easeOut" } },
+};
+
 export default function HomePage() {
   const { featured, categories, loading, fetchFeatured, fetchCategories } =
     useProductStore();
@@ -80,7 +162,7 @@ export default function HomePage() {
     <div>
       {/* Hero Slider */}
       <section
-        className="relative overflow-hidden bg-[#010101]"
+        className="relative overflow-hidden bg-brand-primary"
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
       >
@@ -94,36 +176,72 @@ export default function HomePage() {
           {/* Left — Category Visual */}
           <div className="shrink-0 flex items-center justify-center">
             <div className={`w-48 h-48 rounded-3xl ${theme.ring} border backdrop-blur-sm flex items-center justify-center shadow-2xl`}>
-              {slide ? (
-                <span className={`text-8xl font-black ${theme.letter} select-none`}>
-                  {slide.name.charAt(0)}
-                </span>
-              ) : (
+              {slide ? (() => {
+                const Icon = getCategoryIcon(slide.name);
+                return <Icon className={`w-20 h-20 ${theme.letter}`} />;
+              })() : (
                 <Spinner />
               )}
             </div>
           </div>
 
-          {/* Right — Content */}
-          <div className="flex flex-col gap-5 text-white">
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-white/40">
-              Featured Category
-            </span>
-            <h1 className="text-4xl sm:text-5xl font-black leading-tight">
-              {slide?.name ?? "Loading..."}
-            </h1>
-            <p className="text-white/60 text-lg max-w-md leading-relaxed">
-              {tagline}
-            </p>
-            {slide && (
-              <Link
-                to={`/shop?category=${encodeURIComponent(slide.name)}`}
-                className="self-start bg-action-main text-white font-bold px-8 py-3 rounded-full hover:bg-action-hover transition-colors"
+          {/* Right — Staggered content, re-animates on each slide change */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentSlide}
+              className="flex flex-col gap-5 text-white"
+            >
+              <motion.span
+                custom={0}
+                variants={heroItemVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="text-xs font-bold uppercase tracking-[0.2em] text-white/40"
               >
-                Shop {slide.name}
-              </Link>
-            )}
-          </div>
+                Featured Category
+              </motion.span>
+
+              <motion.h1
+                custom={1}
+                variants={heroItemVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="text-4xl sm:text-5xl font-black leading-tight"
+              >
+                {slide?.name ?? "Loading..."}
+              </motion.h1>
+
+              <motion.p
+                custom={2}
+                variants={heroItemVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="text-white/60 text-lg max-w-md leading-relaxed"
+              >
+                {tagline}
+              </motion.p>
+
+              {slide && (
+                <motion.div
+                  custom={3}
+                  variants={heroItemVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                >
+                  <Link
+                    to={`/shop?category=${encodeURIComponent(slide.name)}`}
+                    className="inline-block bg-action-main text-white font-bold px-8 py-3 rounded-full hover:bg-action-hover transition-colors"
+                  >
+                    Shop {slide.name}
+                  </Link>
+                </motion.div>
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
 
         {/* Navigation Dots */}
@@ -133,10 +251,11 @@ export default function HomePage() {
               <button
                 key={i}
                 onClick={() => setCurrentSlide(i)}
-                className={`rounded-full transition-all duration-300 ${i === currentSlide
+                className={`rounded-full transition-all duration-300 ${
+                  i === currentSlide
                     ? "w-6 h-2 bg-action-main"
                     : "w-2 h-2 bg-white/20 hover:bg-white/40"
-                  }`}
+                }`}
                 aria-label={`Go to slide ${i + 1}`}
               />
             ))}
@@ -144,34 +263,45 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* Categories */}
+      {/* Categories — staggered fade-in on mount */}
       {categories.length > 0 && (
         <section className="max-w-7xl mx-auto px-4 py-12">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Shop by Category</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          <motion.div
+            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4"
+            variants={categoryContainerVariants}
+            initial="hidden"
+            animate="visible"
+          >
             {categories.map((cat) => (
-              <Link
-                key={cat.id}
-                to={`/shop?category=${encodeURIComponent(cat.name)}`}
-                className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl border border-gray-100 hover:shadow-md hover:border-indigo-200 transition-all"
-              >
-                <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 font-bold text-lg">
-                  {cat.name.charAt(0)}
-                </div>
-                <span className="text-xs font-medium text-gray-700 text-center line-clamp-2">
-                  {cat.name}
-                </span>
-              </Link>
+              <motion.div key={cat.id} variants={categoryItemVariants}>
+                <Link
+                  to={`/shop?category=${encodeURIComponent(cat.name)}`}
+                  className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl border border-gray-100 hover:shadow-md hover:border-action-main/30 transition-all"
+                >
+                  {(() => {
+                    const Icon = getCategoryIcon(cat.name);
+                    return (
+                      <div className="w-12 h-12 bg-action-main/10 rounded-full flex items-center justify-center text-action-main">
+                        <Icon className="w-5 h-5" />
+                      </div>
+                    );
+                  })()}
+                  <span className="text-xs font-medium text-gray-700 text-center line-clamp-2">
+                    {cat.name}
+                  </span>
+                </Link>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </section>
       )}
 
-      {/* Featured Products */}
+      {/* Featured Products — scroll-triggered reveal per card */}
       <section className="max-w-7xl mx-auto px-4 py-8 pb-16">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-900">Featured Products</h2>
-          <Link to="/shop" className="text-sm font-medium text-indigo-600 hover:text-indigo-700">
+          <Link to="/shop" className="text-sm font-medium text-action-main hover:text-action-hover">
             View all
           </Link>
         </div>
@@ -179,8 +309,16 @@ export default function HomePage() {
           <Spinner />
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {featured.map((p) => (
-              <ProductCard key={p.id} product={p} />
+            {featured.map((p, index) => (
+              <motion.div
+                key={p.id}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.1 }}
+                transition={{ duration: 0.4, delay: index * 0.07, ease: "easeOut" }}
+              >
+                <ProductCard product={p} />
+              </motion.div>
             ))}
           </div>
         )}

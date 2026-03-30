@@ -20,8 +20,11 @@ builder.Services.AddDbContext<AuthDbContext>(options =>
 
 // Dependency Injection: Repository and Service layers
 builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<IOtpCodeRepository, OtpCodeRepository>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<ITwoFactorService, TwoFactorService>();
+builder.Services.AddScoped<IAccountService, AccountService>();
 
 // JWT Authentication
 var jwt = builder.Configuration.GetSection("Jwt");

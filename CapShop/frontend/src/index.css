@@ -2,35 +2,28 @@
 
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
+    @apply font-sans bg-gray-50 text-gray-900 antialiased;
   }
 }
 @theme {
-  /* BACKGROUNDS (The #16161a and #010101) */
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
+
+  /* BACKGROUNDS */
   --color-ui-bg: #16161a;
-  /* Main page background */
   --color-ui-card: #242629;
-  /* Slightly lighter for cards to pop */
 
-  /* BRAND & NAV (The #010101) */
+  /* BRAND & NAV */
   --color-brand-primary: #010101;
-  /* Deepest black for Navbar */
   --color-brand-secondary: #72757e;
-  /* Muted slate for borders/sub-nav */
 
-  /* ACTIONS (The #7f5af0 Purple and #2cb67d Green) */
+  /* ACTIONS */
   --color-action-main: #7f5af0;
-  /* Primary Buttons (The soft purple) */
+  --color-action-hover: #6b46e0;
   --color-action-success: #2cb67d;
-  /* Secondary Action (The mint green) */
   --color-action-highlight: #fffffe;
-  /* Highlights */
 
-  /* TEXT (The #fffffe and #94a1b2) */
+  /* TEXT */
   --color-text-header: #fffffe;
-  /* Crisp white for headlines */
   --color-text-body: #94a1b2;
-  /* Soft grey for paragraph text */
   --color-text-muted: #72757e;
-  /* Darker grey for labels */
 }

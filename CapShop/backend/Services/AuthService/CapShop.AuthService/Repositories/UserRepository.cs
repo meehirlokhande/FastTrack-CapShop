@@ -1,4 +1,4 @@
-﻿using CapShop.AuthService.Data;
+using CapShop.AuthService.Data;
 using CapShop.AuthService.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,9 +23,20 @@ public class UserRepository : IUserRepository
         return await _db.Users.AnyAsync(u => u.Email == email);
     }
 
+    public async Task<User?> FindByIdAsync(Guid id)
+    {
+        return await _db.Users.FindAsync(id);
+    }
+
     public async Task AddAsync(User user)
     {
         _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task UpdateAsync(User user)
+    {
+        _db.Users.Update(user);
         await _db.SaveChangesAsync();
     }
 }

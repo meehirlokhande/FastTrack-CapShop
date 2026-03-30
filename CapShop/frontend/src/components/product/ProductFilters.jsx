@@ -18,7 +18,7 @@ export default function ProductFilters({ filters, categories, onChange }) {
               value=""
               checked={!filters.category}
               onChange={() => onChange({ category: "" })}
-              className="accent-indigo-600"
+              className="accent-action-main"
             />
             <span className="text-sm text-gray-700">All</span>
           </label>
@@ -30,7 +30,7 @@ export default function ProductFilters({ filters, categories, onChange }) {
                 value={cat.name}
                 checked={filters.category === cat.name}
                 onChange={() => onChange({ category: cat.name })}
-                className="accent-indigo-600"
+                className="accent-action-main"
               />
               <span className="text-sm text-gray-700">{cat.name}</span>
             </label>
@@ -48,7 +48,7 @@ export default function ProductFilters({ filters, categories, onChange }) {
             onChange={(e) =>
               onChange({ minPrice: e.target.value || undefined })
             }
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-action-main/50"
           />
           <input
             type="number"
@@ -57,7 +57,7 @@ export default function ProductFilters({ filters, categories, onChange }) {
             onChange={(e) =>
               onChange({ maxPrice: e.target.value || undefined })
             }
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-action-main/50"
           />
         </div>
       </div>
@@ -67,7 +67,7 @@ export default function ProductFilters({ filters, categories, onChange }) {
         <select
           value={filters.sort ?? ""}
           onChange={(e) => onChange({ sort: e.target.value || undefined })}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-action-main/50"
         >
           {sortOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -79,7 +79,7 @@ export default function ProductFilters({ filters, categories, onChange }) {
 
       <button
         onClick={() => onChange({ category: "", minPrice: undefined, maxPrice: undefined, sort: undefined })}
-        className="w-full text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+        className="w-full text-sm text-action-main hover:text-action-hover font-medium"
       >
         Clear Filters
       </button>

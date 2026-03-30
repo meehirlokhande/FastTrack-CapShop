@@ -107,7 +107,9 @@ export default function Navbar() {
             {token ? (
               <div className="flex items-center gap-4 border-l border-brand-secondary/20 pl-4">
                 <div className="hidden sm:flex flex-col items-end leading-none">
-                  <span className="text-[10px] text-text-muted font-bold uppercase">Account</span>
+                  <Link to="/account/security" className="text-[10px] text-text-muted font-bold uppercase hover:text-action-main transition-colors">
+                    Account
+                  </Link>
                   <span className="text-sm text-text-header font-medium">{user?.fullName?.split(" ")[0]}</span>
                 </div>
                 <button

@@ -15,6 +15,7 @@ import CheckoutPage from "../pages/CheckoutPage";
 import OrdersPage from "../pages/OrdersPage";
 import OrderDetailPage from "../pages/OrderDetailPage";
 import OrderConfirmationPage from "../pages/OrderConfirmationPage";
+import AccountSecurityPage from "../pages/AccountSecurityPage";
 
 import DashboardPage from "../pages/admin/DashboardPage";
 import AdminProductsPage from "../pages/admin/AdminProductsPage";
@@ -50,6 +51,7 @@ export default function AppRoutes() {
             path="/orders/:id/confirmation"
             element={<OrderConfirmationPage />}
           />
+          <Route path="/account/security" element={<AccountSecurityPage />} />
         </Route>
       </Route>
 

@@ -31,7 +31,7 @@ export default function ProductCard({ product }) {
         )}
       </div>
       <div className="p-4">
-        <p className="text-xs text-indigo-500 font-medium mb-1">{categoryName}</p>
+        <p className="text-xs text-action-main font-medium mb-1">{categoryName}</p>
         <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 mb-2">{name}</h3>
         <div className="flex items-center gap-2">
           <span className="text-base font-bold text-gray-900">

@@ -54,7 +54,7 @@ export default function ShopPage() {
           placeholder="Search products..."
           value={filters.query}
           onChange={(e) => handleFilterChange({ query: e.target.value })}
-          className="w-full sm:max-w-md border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          className="w-full sm:max-w-md border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-action-main/50"
         />
       </div>
 

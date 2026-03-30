@@ -50,7 +50,7 @@ export default function CartPage() {
           action={
             <Link
               to="/shop"
-              className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-indigo-700"
+              className="bg-action-main text-white px-6 py-2.5 rounded-lg font-medium hover:bg-action-hover"
             >
               Browse Products
             </Link>
@@ -72,7 +72,7 @@ export default function CartPage() {
                 />
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-gray-800 truncate">{item.productName}</p>
-                  <p className="text-indigo-600 font-medium mt-1">
+                  <p className="text-action-main font-medium mt-1">
                     {formatCurrency(item.price)}
                   </p>
                   <div className="flex items-center gap-3 mt-2">
@@ -138,7 +138,7 @@ export default function CartPage() {
             </div>
             <button
               onClick={() => navigate("/checkout")}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg transition-colors"
+              className="w-full bg-action-main hover:bg-action-hover text-white font-medium py-2.5 rounded-lg transition-colors"
             >
               Proceed to Checkout
             </button>

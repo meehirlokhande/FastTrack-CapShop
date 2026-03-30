@@ -27,7 +27,7 @@ export default function OrdersPage() {
           action={
             <Link
               to="/shop"
-              className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-indigo-700"
+              className="bg-action-main text-white px-6 py-2.5 rounded-lg font-medium hover:bg-action-hover"
             >
               Shop Now
             </Link>

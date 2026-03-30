@@ -61,9 +61,9 @@ export default function ProductDetailPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <nav className="text-sm text-gray-500 mb-6">
-        <Link to="/" className="hover:text-indigo-600">Home</Link>
+        <Link to="/" className="hover:text-action-main">Home</Link>
         <span className="mx-2">/</span>
-        <Link to="/shop" className="hover:text-indigo-600">Shop</Link>
+        <Link to="/shop" className="hover:text-action-main">Shop</Link>
         <span className="mx-2">/</span>
         <span className="text-gray-800">{product.name}</span>
       </nav>
@@ -81,7 +81,7 @@ export default function ProductDetailPage() {
         {/* Info */}
         <div className="flex flex-col gap-4">
           <div>
-            <p className="text-sm text-indigo-500 font-medium mb-1">{product.categoryName}</p>
+            <p className="text-sm text-action-main font-medium mb-1">{product.categoryName}</p>
             <h1 className="text-2xl font-bold text-gray-900">{product.name}</h1>
           </div>
 
@@ -130,7 +130,7 @@ export default function ProductDetailPage() {
               <button
                 onClick={handleAddToCart}
                 disabled={adding}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg transition-colors disabled:opacity-60"
+                className="flex-1 bg-action-main hover:bg-action-hover text-white font-medium py-2.5 rounded-lg transition-colors disabled:opacity-60"
               >
                 {adding ? "Adding..." : "Add to Cart"}
               </button>

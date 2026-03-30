@@ -64,7 +64,7 @@ export default function SignupPage() {
                 value={form[name]}
                 onChange={handleChange}
                 placeholder={placeholder}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-action-main/50"
               />
             </div>
           ))}
@@ -72,7 +72,7 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg transition-colors disabled:opacity-60"
+            className="w-full bg-action-main hover:bg-action-hover text-white font-medium py-2.5 rounded-lg transition-colors disabled:opacity-60"
           >
             {loading ? "Creating account..." : "Create Account"}
           </button>
@@ -80,7 +80,7 @@ export default function SignupPage() {
 
         <p className="mt-6 text-center text-sm text-gray-500">
           Already have an account?{" "}
-          <Link to="/login" className="text-indigo-600 font-medium hover:underline">
+          <Link to="/login" className="text-action-main font-medium hover:underline">
             Sign In
           </Link>
         </p>

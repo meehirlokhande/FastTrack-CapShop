@@ -16,7 +16,10 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    const url = err.config?.url ?? "";
+    const is2faEndpoint = url.includes("/auth/2fa/verify") || url.includes("/auth/2fa/resend");
+
+    if (err.response?.status === 401 && !is2faEndpoint) {
       localStorage.removeItem("token");
       window.location.href = "/login";
     }

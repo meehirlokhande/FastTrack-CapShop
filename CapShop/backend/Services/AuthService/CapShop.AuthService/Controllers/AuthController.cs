@@ -1,4 +1,4 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using CapShop.AuthService.Dtos;
 using CapShop.AuthService.Services;
@@ -39,6 +39,22 @@ public class AuthController : ControllerBase
     {
         var result = await _account.LoginAsync(request);
         return Ok(result);
+    }
+
+    [HttpPost("2fa/verify")]
+    [AllowAnonymous]
+    public async Task<IActionResult> VerifyTwoFactor([FromBody] VerifyTwoFactorRequest request)
+    {
+        var result = await _account.VerifyTwoFactorAsync(request);
+        return Ok(result);
+    }
+
+    [HttpPost("2fa/resend")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ResendTwoFactor([FromBody] ResendTwoFactorRequest request)
+    {
+        await _account.ResendTwoFactorCodeAsync(request.TempToken);
+        return Ok(new { message = "Code sent." });
     }
 
     [HttpGet("me")]
