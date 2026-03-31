@@ -7,7 +7,8 @@ export const orderApi = {
   removeCartItem: (id) => api.delete(`/orders/cart/items/${id}`),
 
   checkout: (payload) => api.post("/orders/checkout", payload),
-  simulatePayment: (payload) => api.post("/orders/payment/simulate", payload),
+  simulatePayment: (payload) => api.post("/payments/simulate", payload),
+  getPaymentByOrder: (orderId) => api.get(`/payments/order/${orderId}`),
 
   getMyOrders: () => api.get("/orders/my"),
   getOrderById: (id) => api.get(`/orders/${id}`),

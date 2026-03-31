@@ -44,7 +44,7 @@ export default function CheckoutPage() {
     try {
       // Place order first (checkout), then simulate payment
       const order = await checkout(address);
-      const payResult = await simulatePayment(order.id, method);
+      const payResult = await simulatePayment(order.id, method, total);
 
       if (payResult.status === "Failed") {
         toast.error("Payment failed. Please try again.");

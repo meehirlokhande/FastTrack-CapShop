@@ -1,4 +1,4 @@
-﻿using CapShop.OrderService.Dtos;
+using CapShop.OrderService.Dtos;
 using CapShop.OrderService.Models;
 using CapShop.OrderService.Repositories;
 
@@ -63,9 +63,9 @@ public class OrderManagementService : IOrderManagementService
         return MapToOrderResponse(order);
     }
 
-    public async Task<OrderResponse> SimulatePaymentAsync(Guid userId, PaymentRequest request)
+    public async Task UpdatePaymentStatusAsync(Guid orderId, Guid userId, string status, string paymentMethod, DateTime? paidAt)
     {
-        var order = await _orders.GetByIdAsync(request.OrderId);
+        var order = await _orders.GetByIdAsync(orderId);
 
         if (order is null || order.UserId != userId)
             throw new KeyNotFoundException("Order not found.");
@@ -73,29 +73,16 @@ public class OrderManagementService : IOrderManagementService
         if (order.Status != OrderStatus.PaymentPending)
             throw new InvalidOperationException("Order is not awaiting payment.");
 
-        if (!Enum.TryParse<PaymentMethod>(request.PaymentMethod, true, out var method))
-            throw new ArgumentException("Invalid payment method. Use UPI, Card, or COD.");
+        if (Enum.TryParse<PaymentMethod>(paymentMethod, ignoreCase: true, out var method))
+            order.PaymentMethod = method;
 
-        order.PaymentMethod = method;
-
-        // COD always succeeds, others simulate 90% success
-        var paymentSuccess = method == PaymentMethod.COD || Random.Shared.Next(100) < 90;
-
-        if (paymentSuccess)
-        {
-            order.Status = OrderStatus.Paid;
-            order.PaidAt = DateTime.UtcNow;
-            _logger.LogInformation("Payment successful for order {OrderId}, method: {Method}", order.Id, method);
-        }
-        else
-        {
-            order.Status = OrderStatus.PaymentFailed;
-            _logger.LogWarning("Payment failed for order {OrderId}, method: {Method}", order.Id, method);
-        }
+        order.Status = status == "Paid" ? OrderStatus.Paid : OrderStatus.PaymentFailed;
+        order.PaidAt = paidAt;
 
         await _orders.UpdateAsync(order);
 
-        return MapToOrderResponse(order);
+        _logger.LogInformation(
+            "Order {OrderId} payment status updated to {Status} by PaymentService", orderId, status);
     }
 
     public async Task<List<OrderListResponse>> GetMyOrdersAsync(Guid userId)

@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using CapShop.OrderService.Dtos;
 using CapShop.OrderService.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -39,11 +39,22 @@ public class OrderController : ControllerBase
         return Ok(result);
     }
 
-    [HttpPost("payment/simulate")]
-    public async Task<IActionResult> SimulatePayment([FromBody] PaymentRequest request)
+    // Called internally by PaymentService only — protected by X-Internal-Key header
+    [HttpPut("{id:guid}/payment-status")]
+    [AllowAnonymous]
+    public async Task<IActionResult> UpdatePaymentStatus(Guid id, [FromBody] UpdatePaymentStatusRequest request)
     {
-        var result = await _orders.SimulatePaymentAsync(GetUserId(), request);
-        return Ok(result);
+        var expectedKey = HttpContext.RequestServices
+            .GetRequiredService<IConfiguration>()["InternalApi:Key"];
+
+        if (!HttpContext.Request.Headers.TryGetValue("X-Internal-Key", out var receivedKey)
+            || receivedKey != expectedKey)
+        {
+            return Unauthorized(new { message = "Invalid internal key." });
+        }
+
+        await _orders.UpdatePaymentStatusAsync(id, request.UserId, request.Status, request.PaymentMethod, request.PaidAt);
+        return Ok(new { message = "Payment status updated." });
     }
 
     [HttpGet("my")]

@@ -31,8 +31,8 @@ export const useOrderStore = create((set) => ({
     return data;
   },
 
-  simulatePayment: async (orderId, paymentMethod) => {
-    const { data } = await orderApi.simulatePayment({ orderId, paymentMethod });
+  simulatePayment: async (orderId, paymentMethod, amount) => {
+    const { data } = await orderApi.simulatePayment({ orderId, paymentMethod, amount });
     return data;
   },
 
