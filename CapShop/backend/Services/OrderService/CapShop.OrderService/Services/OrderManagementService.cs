@@ -1,6 +1,8 @@
 using CapShop.OrderService.Dtos;
 using CapShop.OrderService.Models;
 using CapShop.OrderService.Repositories;
+using CapShop.Shared.Events;
+using CapShop.Shared.Messaging;
 
 namespace CapShop.OrderService.Services;
 
@@ -8,12 +10,18 @@ public class OrderManagementService : IOrderManagementService
 {
     private readonly IOrderRepository _orders;
     private readonly ICartRepository _carts;
+    private readonly IEventPublisher _events;
     private readonly ILogger<OrderManagementService> _logger;
 
-    public OrderManagementService(IOrderRepository orders, ICartRepository carts, ILogger<OrderManagementService> logger)
+    public OrderManagementService(
+        IOrderRepository orders,
+        ICartRepository carts,
+        IEventPublisher events,
+        ILogger<OrderManagementService> logger)
     {
         _orders = orders;
         _carts = carts;
+        _events = events;
         _logger = logger;
     }
 
@@ -121,6 +129,12 @@ public class OrderManagementService : IOrderManagementService
 
         order.Status = OrderStatus.Cancelled;
         await _orders.UpdateAsync(order);
+
+        await _events.PublishAsync(QueueNames.OrderCancelled, new OrderCancelledEvent(
+            OrderId: orderId,
+            UserId: userId,
+            TotalAmount: order.TotalAmount,
+            CancelledAt: DateTime.UtcNow));
 
         _logger.LogInformation("Order {OrderId} cancelled by user {UserId}", orderId, userId);
     }

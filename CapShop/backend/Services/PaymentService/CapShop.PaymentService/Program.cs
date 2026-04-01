@@ -3,9 +3,11 @@ using CapShop.PaymentService.Data;
 using CapShop.PaymentService.Middleware;
 using CapShop.PaymentService.Repositories;
 using CapShop.PaymentService.Services;
+using CapShop.Shared.Messaging;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using RabbitMQ.Client;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,6 +20,20 @@ builder.Services.AddDbContext<PaymentDbContext>(options =>
 
 builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
 builder.Services.AddScoped<IPaymentService, PaymentServiceImpl>();
+
+builder.Services.AddSingleton<IConnection>(_ =>
+{
+    var rmq = builder.Configuration.GetSection("RabbitMq");
+    var factory = new ConnectionFactory
+    {
+        HostName = rmq["Host"] ?? "localhost",
+        Port = int.Parse(rmq["Port"] ?? "5672"),
+        UserName = rmq["Username"] ?? "guest",
+        Password = rmq["Password"] ?? "guest"
+    };
+    return factory.CreateConnectionAsync().GetAwaiter().GetResult();
+});
+builder.Services.AddSingleton<IEventPublisher, RabbitMqEventPublisher>();
 
 builder.Services.AddHttpClient<IOrderHttpClient, OrderHttpClient>(client =>
 {

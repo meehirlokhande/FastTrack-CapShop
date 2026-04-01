@@ -3,9 +3,11 @@ using CapShop.OrderService.Data;
 using CapShop.OrderService.Middleware;
 using CapShop.OrderService.Repositories;
 using CapShop.OrderService.Services;
+using CapShop.Shared.Messaging;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using RabbitMQ.Client;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +22,20 @@ builder.Services.AddScoped<ICartRepository, CartRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IOrderManagementService, OrderManagementService>();
+
+builder.Services.AddSingleton<IConnection>(_ =>
+{
+    var rmq = builder.Configuration.GetSection("RabbitMq");
+    var factory = new ConnectionFactory
+    {
+        HostName = rmq["Host"] ?? "localhost",
+        Port = int.Parse(rmq["Port"] ?? "5672"),
+        UserName = rmq["Username"] ?? "guest",
+        Password = rmq["Password"] ?? "guest"
+    };
+    return factory.CreateConnectionAsync().GetAwaiter().GetResult();
+});
+builder.Services.AddSingleton<IEventPublisher, RabbitMqEventPublisher>();
 
 var jwt = builder.Configuration.GetSection("Jwt");
 var signingKey = jwt["SigningKey"] ?? throw new InvalidOperationException("Jwt:SigningKey is missing");

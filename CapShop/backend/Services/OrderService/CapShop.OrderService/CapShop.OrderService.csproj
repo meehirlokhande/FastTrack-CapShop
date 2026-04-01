@@ -21,4 +21,8 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.6" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Shared\CapShop.Shared\CapShop.Shared.csproj" />
+  </ItemGroup>
+
 </Project>

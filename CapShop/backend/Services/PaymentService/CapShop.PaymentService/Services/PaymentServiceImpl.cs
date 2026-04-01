@@ -1,6 +1,8 @@
 using CapShop.PaymentService.Dtos;
 using CapShop.PaymentService.Models;
 using CapShop.PaymentService.Repositories;
+using CapShop.Shared.Events;
+using CapShop.Shared.Messaging;
 
 namespace CapShop.PaymentService.Services;
 
@@ -8,15 +10,18 @@ public class PaymentServiceImpl : IPaymentService
 {
     private readonly ITransactionRepository _transactions;
     private readonly IOrderHttpClient _orderClient;
+    private readonly IEventPublisher _events;
     private readonly ILogger<PaymentServiceImpl> _logger;
 
     public PaymentServiceImpl(
         ITransactionRepository transactions,
         IOrderHttpClient orderClient,
+        IEventPublisher events,
         ILogger<PaymentServiceImpl> logger)
     {
         _transactions = transactions;
         _orderClient = orderClient;
+        _events = events;
         _logger = logger;
     }
 
@@ -52,6 +57,15 @@ public class PaymentServiceImpl : IPaymentService
 
         await _orderClient.UpdatePaymentStatusAsync(
             request.OrderId, userId, orderStatus, method.ToString(), transaction.CompletedAt);
+
+        await _events.PublishAsync(QueueNames.PaymentCompleted, new PaymentCompletedEvent(
+            TransactionId: transaction.Id,
+            OrderId: transaction.OrderId,
+            UserId: userId,
+            Amount: transaction.Amount,
+            Status: transaction.Status.ToString(),
+            PaymentMethod: method.ToString(),
+            CompletedAt: transaction.CompletedAt!.Value));
 
         _logger.LogInformation(
             "Payment {Status} for order {OrderId}, method: {Method}, transaction: {TxId}",

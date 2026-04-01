@@ -15,6 +15,9 @@
   <Folder Name="/Services/OrderService/">
     <Project Path="Services/OrderService/CapShop.OrderService/CapShop.OrderService.csproj" />
   </Folder>
+  <Folder Name="/Services/NotificationService/">
+    <Project Path="Services/NotificationService/CapShop.NotificationService/CapShop.NotificationService.csproj" />
+  </Folder>
   <Folder Name="/Services/PaymentService/">
     <Project Path="Services/PaymentService/CapShop.PaymentService/CapShop.PaymentService.csproj" />
   </Folder>
