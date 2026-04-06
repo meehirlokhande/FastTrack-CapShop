@@ -1,16 +1,20 @@
 using CapShop.AdminService.Dtos;
 using CapShop.AdminService.Models;
 using CapShop.AdminService.Repositories;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace CapShop.AdminService.Services;
 
 public class CategoryManagementService : ICategoryManagementService
 {
     private readonly IAdminCategoryRepository _categories;
+    private readonly IDistributedCache _cache;
+    private const string KeyCategories = "categories";
 
-    public CategoryManagementService(IAdminCategoryRepository categories)
+    public CategoryManagementService(IAdminCategoryRepository categories, IDistributedCache cache)
     {
         _categories = categories;
+        _cache = cache;
     }
 
     public async Task<List<AdminCategoryResponse>> GetAllAsync()
@@ -40,6 +44,7 @@ public class CategoryManagementService : ICategoryManagementService
         };
 
         await _categories.AddAsync(category);
+        await _cache.RemoveAsync(KeyCategories);
 
         return new AdminCategoryResponse
         {
@@ -60,5 +65,6 @@ public class CategoryManagementService : ICategoryManagementService
                 "Cannot delete a category that has products assigned to it. Reassign or delete those products first.");
 
         await _categories.DeleteAsync(category);
+        await _cache.RemoveAsync(KeyCategories);
     }
 }

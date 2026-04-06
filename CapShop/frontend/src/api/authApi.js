@@ -5,6 +5,12 @@ export const authApi = {
   login: (payload) => api.post("/auth/login", payload),
   me: () => api.get("/auth/me"),
 
+  getProfile: () => api.get("/auth/profile"),
+  updateProfile: (payload) => api.put("/auth/profile", payload),
+  changePassword: (payload) => api.put("/auth/profile/password", payload),
+  uploadAvatar: (formData) => api.post("/auth/profile/avatar", formData),
+  removeAvatar: () => api.delete("/auth/profile/avatar"),
+
   // 2FA — login flow (no token required)
   verifyTwoFactor: (payload) => api.post("/auth/2fa/verify", payload),
   resendTwoFactor: (tempToken) => api.post("/auth/2fa/resend", { tempToken }),

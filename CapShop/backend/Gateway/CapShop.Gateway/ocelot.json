@@ -1,6 +1,18 @@
 {
   "Routes": [
     {
+      "DownstreamPathTemplate": "/avatars/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 5285
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/avatars/{everything}",
+      "UpstreamHttpMethod": [ "GET", "HEAD" ]
+    },
+    {
       "DownstreamPathTemplate": "/auth/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [

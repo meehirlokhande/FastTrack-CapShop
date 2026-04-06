@@ -1,6 +1,7 @@
-﻿using CapShop.AdminService.Dtos;
+using CapShop.AdminService.Dtos;
 using CapShop.AdminService.Models;
 using CapShop.AdminService.Repositories;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace CapShop.AdminService.Services;
 
@@ -8,12 +9,22 @@ public class ProductManagementService : IProductManagementService
 {
     private readonly IAdminProductRepository _products;
     private readonly IAdminLogService _log;
+    private readonly IDistributedCache _cache;
     private readonly ILogger<ProductManagementService> _logger;
 
-    public ProductManagementService(IAdminProductRepository products, IAdminLogService log, ILogger<ProductManagementService> logger)
+    // Must match the instance name prefix + keys used in CatalogService
+    private const string KeyFeatured = "featured";
+    private static string KeyProduct(Guid id) => $"product:{id}";
+
+    public ProductManagementService(
+        IAdminProductRepository products,
+        IAdminLogService log,
+        IDistributedCache cache,
+        ILogger<ProductManagementService> logger)
     {
         _products = products;
         _log = log;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -56,6 +67,9 @@ public class ProductManagementService : IProductManagementService
 
         await _products.AddAsync(product);
 
+        if (product.IsFeatured)
+            await _cache.RemoveAsync(KeyFeatured);
+
         await _log.LogAsync(adminUserId, "Created", "Product", product.Id.ToString(),
             $"Created product: {product.Name}, Price: {product.Price}");
 
@@ -87,6 +101,9 @@ public class ProductManagementService : IProductManagementService
 
         await _products.UpdateAsync(product);
 
+        await _cache.RemoveAsync(KeyProduct(id));
+        await _cache.RemoveAsync(KeyFeatured);
+
         await _log.LogAsync(adminUserId, "Updated", "Product", id.ToString(),
             $"Updated product: {product.Name}");
 
@@ -100,6 +117,9 @@ public class ProductManagementService : IProductManagementService
             ?? throw new KeyNotFoundException("Product not found.");
 
         await _products.DeleteAsync(product);
+
+        await _cache.RemoveAsync(KeyProduct(id));
+        await _cache.RemoveAsync(KeyFeatured);
 
         await _log.LogAsync(adminUserId, "Deleted", "Product", id.ToString(),
             $"Deleted product: {product.Name}");
@@ -119,6 +139,9 @@ public class ProductManagementService : IProductManagementService
 
         await _products.UpdateAsync(product);
 
+        await _cache.RemoveAsync(KeyProduct(id));
+        await _cache.RemoveAsync(KeyFeatured);
+
         await _log.LogAsync(adminUserId, "StatusChanged", "Product", id.ToString(),
             $"Status changed from {oldStatus} to {product.Status}");
 
@@ -136,6 +159,8 @@ public class ProductManagementService : IProductManagementService
         var oldStock = product.Stock;
         product.Stock = request.Stock;
         await _products.UpdateAsync(product);
+
+        await _cache.RemoveAsync(KeyProduct(id));
 
         await _log.LogAsync(adminUserId, "StockUpdated", "Product", id.ToString(),
             $"Stock changed from {oldStock} to {request.Stock}");

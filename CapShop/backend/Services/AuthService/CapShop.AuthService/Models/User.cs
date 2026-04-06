@@ -14,4 +14,7 @@ public class User
     public bool TwoFactorEnabled { get; set; } = false;
     public TwoFactorMethod TwoFactorMethod { get; set; } = TwoFactorMethod.None;
     public string? TotpSecret { get; set; }
+
+    /// <summary>Relative public path e.g. /avatars/{id}.jpg when set.</summary>
+    public string? ProfilePictureUrl { get; set; }
 }

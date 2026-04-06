@@ -1,25 +1,31 @@
 using CapShop.AuthService.Dtos;
 using CapShop.AuthService.Models;
 using CapShop.AuthService.Repositories;
+using Microsoft.AspNetCore.Hosting;
 
 namespace CapShop.AuthService.Services;
 
 public class AccountService : IAccountService
 {
+    private const long MaxAvatarBytes = 2 * 1024 * 1024;
+
     private readonly IUserRepository _users;
     private readonly IJwtTokenService _jwt;
     private readonly ITwoFactorService _twoFactor;
+    private readonly IWebHostEnvironment _env;
     private readonly ILogger<AccountService> _logger;
 
     public AccountService(
         IUserRepository users,
         IJwtTokenService jwt,
         ITwoFactorService twoFactor,
+        IWebHostEnvironment env,
         ILogger<AccountService> logger)
     {
         _users = users;
         _jwt = jwt;
         _twoFactor = twoFactor;
+        _env = env;
         _logger = logger;
     }
 
@@ -129,4 +135,135 @@ public class AccountService : IAccountService
 
         await _twoFactor.SendOtpAsync(payload.UserId, payload.Method);
     }
+
+    public async Task<ProfileResponse> GetProfileAsync(Guid userId)
+    {
+        var user = await _users.FindByIdAsync(userId)
+            ?? throw new KeyNotFoundException("User not found.");
+        return MapProfile(user);
+    }
+
+    public async Task<ProfileResponse> UpdateProfileAsync(Guid userId, UpdateProfileRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.FullName))
+            throw new ArgumentException("Full name is required.");
+
+        var user = await _users.FindByIdAsync(userId)
+            ?? throw new KeyNotFoundException("User not found.");
+
+        user.FullName = request.FullName.Trim();
+        user.PhoneNumber = request.PhoneNumber?.Trim() ?? string.Empty;
+
+        await _users.UpdateAsync(user);
+
+        _logger.LogInformation("Profile updated for user {UserId}", userId);
+
+        return MapProfile(user);
+    }
+
+    public async Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 6)
+            throw new ArgumentException("New password must be at least 6 characters.");
+
+        var user = await _users.FindByIdAsync(userId)
+            ?? throw new KeyNotFoundException("User not found.");
+
+        if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
+            throw new ArgumentException("Current password is incorrect.");
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        await _users.UpdateAsync(user);
+
+        _logger.LogInformation("Password changed for user {UserId}", userId);
+    }
+
+    public async Task<ProfileResponse> SetAvatarAsync(
+        Guid userId,
+        Stream fileStream,
+        string contentType,
+        long length)
+    {
+        if (length <= 0 || length > MaxAvatarBytes)
+            throw new ArgumentException("Image must be between 1 byte and 2 MB.");
+
+        var ext = contentType.ToLowerInvariant() switch
+        {
+            "image/jpeg" or "image/jpg" => ".jpg",
+            "image/png" => ".png",
+            "image/webp" => ".webp",
+            "image/gif" => ".gif",
+            _ => throw new ArgumentException("Only JPEG, PNG, WebP, and GIF images are allowed.")
+        };
+
+        var user = await _users.FindByIdAsync(userId)
+            ?? throw new KeyNotFoundException("User not found.");
+
+        TryDeletePhysicalFile(user.ProfilePictureUrl);
+
+        var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+        var avatarsDir = Path.Combine(webRoot, "avatars");
+        Directory.CreateDirectory(avatarsDir);
+
+        var fileName = $"{userId:N}{ext}";
+        var physicalPath = Path.Combine(avatarsDir, fileName);
+
+        await using (var output = File.Create(physicalPath))
+        {
+            await fileStream.CopyToAsync(output);
+        }
+
+        user.ProfilePictureUrl = $"/avatars/{fileName}";
+        await _users.UpdateAsync(user);
+
+        _logger.LogInformation("Avatar updated for user {UserId}", userId);
+
+        return MapProfile(user);
+    }
+
+    public async Task<ProfileResponse> RemoveAvatarAsync(Guid userId)
+    {
+        var user = await _users.FindByIdAsync(userId)
+            ?? throw new KeyNotFoundException("User not found.");
+
+        TryDeletePhysicalFile(user.ProfilePictureUrl);
+        user.ProfilePictureUrl = null;
+        await _users.UpdateAsync(user);
+
+        _logger.LogInformation("Avatar removed for user {UserId}", userId);
+
+        return MapProfile(user);
+    }
+
+    private void TryDeletePhysicalFile(string? relativeUrl)
+    {
+        if (string.IsNullOrEmpty(relativeUrl) || !relativeUrl.StartsWith("/avatars/", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        var fileName = Path.GetFileName(relativeUrl);
+        if (string.IsNullOrEmpty(fileName) || fileName.Contains("..", StringComparison.Ordinal))
+            return;
+
+        var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+        var path = Path.Combine(webRoot, "avatars", fileName);
+
+        try
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+        catch (IOException ex)
+        {
+            _logger.LogWarning(ex, "Could not delete avatar file {Path}", path);
+        }
+    }
+
+    private static ProfileResponse MapProfile(User u) => new()
+    {
+        FullName = u.FullName,
+        Email = u.Email,
+        PhoneNumber = u.PhoneNumber,
+        Role = u.Role.ToString(),
+        ProfilePictureUrl = u.ProfilePictureUrl
+    };
 }

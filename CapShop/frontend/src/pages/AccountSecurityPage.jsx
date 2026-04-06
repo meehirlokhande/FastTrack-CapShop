@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { QRCode } from "react-qr-code";
 import { authApi } from "../api/authApi";
 import toast from "react-hot-toast";
 import Spinner from "../components/ui/Spinner";
+import AccountSubNav from "../components/account/AccountSubNav";
 
 const METHODS = [
   {
@@ -136,7 +138,17 @@ export default function AccountSecurityPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Security Settings</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">Account</h1>
+      <p className="text-sm text-gray-500 mb-6">
+        Security and two-factor authentication.{" "}
+        <Link to="/account/profile" className="text-indigo-600 hover:underline font-medium">
+          Edit profile
+        </Link>
+      </p>
+
+      <AccountSubNav />
+
+      <h2 className="text-lg font-semibold text-gray-900 mb-1">Security Settings</h2>
       <p className="text-sm text-gray-500 mb-8">Manage two-factor authentication for your account.</p>
 
       {/* Current Status */}

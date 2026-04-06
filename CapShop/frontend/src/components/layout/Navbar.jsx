@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../app/authStore";
+import { gatewayAssetUrl } from "../../utils/gatewayAssetUrl";
 import { useCartStore } from "../../app/cartStore";
 import { useProductStore } from "../../app/productStore";
 
@@ -106,11 +107,26 @@ export default function Navbar() {
 
             {token ? (
               <div className="flex items-center gap-4 border-l border-brand-secondary/20 pl-4">
-                <div className="hidden sm:flex flex-col items-end leading-none">
-                  <Link to="/account/security" className="text-[10px] text-text-muted font-bold uppercase hover:text-action-main transition-colors">
-                    Account
+                <div className="hidden sm:flex items-center gap-3">
+                  <Link to="/account/profile" className="shrink-0">
+                    {gatewayAssetUrl(user?.profilePictureUrl) ? (
+                      <img
+                        src={gatewayAssetUrl(user.profilePictureUrl)}
+                        alt=""
+                        className="h-9 w-9 rounded-full object-cover border border-brand-secondary/30"
+                      />
+                    ) : (
+                      <div className="h-9 w-9 rounded-full bg-action-main/20 text-action-main flex items-center justify-center text-xs font-bold border border-brand-secondary/30">
+                        {(user?.fullName || user?.email || "?").charAt(0).toUpperCase()}
+                      </div>
+                    )}
                   </Link>
-                  <span className="text-sm text-text-header font-medium">{user?.fullName?.split(" ")[0]}</span>
+                  <div className="flex flex-col items-end leading-none">
+                    <Link to="/account/profile" className="text-[10px] text-text-muted font-bold uppercase hover:text-action-main transition-colors">
+                      Account
+                    </Link>
+                    <span className="text-sm text-text-header font-medium">{user?.fullName?.split(" ")[0]}</span>
+                  </div>
                 </div>
                 <button
                   onClick={handleLogout}

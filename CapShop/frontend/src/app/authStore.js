@@ -54,7 +54,7 @@ export const useAuthStore = create((set, get) => ({
 
   fetchUser: async () => {
     try {
-      const { data } = await authApi.me();
+      const { data } = await authApi.getProfile();
       set({ user: data, role: data.role, isLoading: false });
     } catch {
       set({ user: null, isLoading: false });

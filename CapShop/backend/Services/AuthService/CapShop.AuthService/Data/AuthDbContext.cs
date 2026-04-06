@@ -23,6 +23,7 @@ public class AuthDbContext : DbContext
             entity.Property(x => x.Role).HasConversion<int>();
             entity.Property(x => x.TwoFactorMethod).HasConversion<int>();
             entity.Property(x => x.TotpSecret).HasMaxLength(256);
+            entity.Property(x => x.ProfilePictureUrl).HasMaxLength(512);
         });
 
         modelBuilder.Entity<OtpCode>(entity =>
