@@ -3,6 +3,7 @@ using CapShop.AdminService.Data;
 using CapShop.AdminService.Middleware;
 using CapShop.AdminService.Repositories;
 using CapShop.AdminService.Services;
+using CapShop.Shared.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -63,6 +64,7 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())

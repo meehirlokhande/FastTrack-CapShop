@@ -1,29 +1,30 @@
 using System.Text;
 using System.Text.Json;
-using CapShop.NotificationService.Services;
+using CapShop.OrderService.Services;
 using CapShop.Shared.Events;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
-namespace CapShop.NotificationService.Workers;
+namespace CapShop.OrderService.Workers;
 
-public class PaymentNotificationWorker : BackgroundService
+public class PaymentResultWorker : BackgroundService
 {
+    // Each consumer binds its own durable queue to the shared fanout exchange.
+    private const string ConsumerQueue = "capshop.payment.completed.orders";
+
     private readonly IConnection _connection;
     private readonly IServiceProvider _services;
-    private readonly ILogger<PaymentNotificationWorker> _logger;
+    private readonly ILogger<PaymentResultWorker> _logger;
 
-    public PaymentNotificationWorker(
+    public PaymentResultWorker(
         IConnection connection,
         IServiceProvider services,
-        ILogger<PaymentNotificationWorker> logger)
+        ILogger<PaymentResultWorker> logger)
     {
         _connection = connection;
         _services = services;
         _logger = logger;
     }
-
-    private const string ConsumerQueue = "capshop.payment.completed.notifications";
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -86,47 +87,28 @@ public class PaymentNotificationWorker : BackgroundService
     private async Task HandleAsync(PaymentCompletedEvent evt)
     {
         using var scope = _services.CreateScope();
-        var authClient = scope.ServiceProvider.GetRequiredService<IAuthHttpClient>();
-        var emailSender = scope.ServiceProvider.GetRequiredService<IEmailSender>();
+        var orderService = scope.ServiceProvider.GetRequiredService<IOrderManagementService>();
 
-        var user = await authClient.GetUserAsync(evt.UserId);
-        if (user is null)
+        var paidAt = evt.Status == "Captured" ? evt.CompletedAt : (DateTime?)null;
+
+        try
         {
-            _logger.LogWarning("[{CorrelationId}] Could not resolve user {UserId} for payment notification",
-                evt.CorrelationId, evt.UserId);
-            return;
+            await orderService.UpdatePaymentStatusAsync(
+                orderId: evt.OrderId,
+                userId: evt.UserId,
+                status: evt.Status == "Captured" ? "Paid" : "PaymentFailed",
+                paymentMethod: evt.PaymentMethod,
+                paidAt: paidAt);
+
+            _logger.LogInformation(
+                "[{CorrelationId}] Order {OrderId} status updated to {Status} via PaymentCompletedEvent",
+                evt.CorrelationId, evt.OrderId, evt.Status);
         }
-
-        var (subject, body) = evt.Status == "Captured"
-            ? BuildCapturedEmail(user.FullName, evt)
-            : BuildFailedEmail(user.FullName, evt);
-
-        await emailSender.SendAsync(user.Email, user.FullName, subject, body);
-        _logger.LogInformation("[{CorrelationId}] Payment notification sent to {Email}, status: {Status}",
-            evt.CorrelationId, user.Email, evt.Status);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Failed to update order {OrderId} from PaymentCompletedEvent",
+                evt.CorrelationId, evt.OrderId);
+            throw; // rethrow so BasicNack is called by the outer catch
+        }
     }
-
-    private static (string subject, string body) BuildCapturedEmail(string name, PaymentCompletedEvent evt) => (
-        "Your CapShop order is confirmed!",
-        $"""
-        <div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
-          <h2 style="color:#16a34a;">Order Confirmed</h2>
-          <p>Hi {name},</p>
-          <p>Your payment of <strong>₹{evt.Amount:N2}</strong> via <strong>{evt.PaymentMethod}</strong> was successful.</p>
-          <p>Order ID: <code>{evt.OrderId}</code></p>
-          <p style="color:#555;">We're preparing your order. You'll receive another update when it ships.</p>
-        </div>
-        """);
-
-    private static (string subject, string body) BuildFailedEmail(string name, PaymentCompletedEvent evt) => (
-        "Your CapShop payment failed",
-        $"""
-        <div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
-          <h2 style="color:#dc2626;">Payment Failed</h2>
-          <p>Hi {name},</p>
-          <p>Your payment of <strong>₹{evt.Amount:N2}</strong> via <strong>{evt.PaymentMethod}</strong> could not be processed.</p>
-          <p>Order ID: <code>{evt.OrderId}</code></p>
-          <p>Please retry with a different payment method.</p>
-        </div>
-        """);
 }

@@ -1,0 +1,79 @@
+{
+  "Routes": [
+    {
+      "DownstreamPathTemplate": "/avatars/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "auth-service",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/avatars/{everything}",
+      "UpstreamHttpMethod": [ "GET", "HEAD" ]
+    },
+    {
+      "DownstreamPathTemplate": "/auth/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "auth-service",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/auth/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
+    },
+    {
+      "DownstreamPathTemplate": "/catalog/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "catalog-service",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/catalog/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
+    },
+    {
+      "DownstreamPathTemplate": "/orders/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "order-service",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/orders/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
+    },
+    {
+      "DownstreamPathTemplate": "/admin/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "admin-service",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/admin/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
+    },
+    {
+      "DownstreamPathTemplate": "/payments/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "payment-service",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/payments/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ]
+    }
+  ],
+  "GlobalConfiguration": {
+    "BaseUrl": "http://gateway:8080"
+  }
+}

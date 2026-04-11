@@ -1,0 +1,202 @@
+services:
+
+  # ─── Infrastructure ───────────────────────────────────────────────────────
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      SA_PASSWORD: ${SQL_SA_PASSWORD}
+      ACCEPT_EULA: Y
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$SA_PASSWORD\" -Q \"SELECT 1\" -b -No"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # ─── Backend Services ─────────────────────────────────────────────────────
+
+  auth-service:
+    build:
+      context: ./backend
+      dockerfile: Services/AuthService/CapShop.AuthService/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ConnectionStrings__AuthDb: "Server=sqlserver,1433;Database=CapShopAuth;User Id=sa;Password=${SQL_SA_PASSWORD};Encrypt=True;TrustServerCertificate=True"
+      Jwt__SigningKey: ${JWT_SIGNING_KEY}
+      Smtp__Username: ${SMTP_USERNAME}
+      Smtp__Password: ${SMTP_PASSWORD}
+      Smtp__FromEmail: ${SMTP_FROM_EMAIL}
+      Twilio__AccountSid: ${TWILIO_ACCOUNT_SID}
+      Twilio__AuthToken: ${TWILIO_AUTH_TOKEN}
+      Twilio__FromNumber: ${TWILIO_FROM_NUMBER}
+      InternalApi__Key: ${INTERNAL_API_KEY}
+    ports:
+      - "5285:8080"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    restart: on-failure
+
+  catalog-service:
+    build:
+      context: ./backend
+      dockerfile: Services/CatalogService/CapShop.CatalogService/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ConnectionStrings__CatalogDb: "Server=sqlserver,1433;Database=CapShopCatalog;User Id=sa;Password=${SQL_SA_PASSWORD};Encrypt=True;TrustServerCertificate=True"
+      Jwt__SigningKey: ${JWT_SIGNING_KEY}
+      Redis__ConnectionString: redis:6379
+    ports:
+      - "5287:8080"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: on-failure
+
+  order-service:
+    build:
+      context: ./backend
+      dockerfile: Services/OrderService/CapShop.OrderService/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ConnectionStrings__OrderDb: "Server=sqlserver,1433;Database=CapShopOrder;User Id=sa;Password=${SQL_SA_PASSWORD};Encrypt=True;TrustServerCertificate=True"
+      Jwt__SigningKey: ${JWT_SIGNING_KEY}
+      RabbitMq__Host: rabbitmq
+      InternalApi__Key: ${INTERNAL_API_KEY}
+    ports:
+      - "5166:8080"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: on-failure
+
+  payment-service:
+    build:
+      context: ./backend
+      dockerfile: Services/PaymentService/CapShop.PaymentService/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ConnectionStrings__PaymentDb: "Server=sqlserver,1433;Database=CapShopPayment;User Id=sa;Password=${SQL_SA_PASSWORD};Encrypt=True;TrustServerCertificate=True"
+      Jwt__SigningKey: ${JWT_SIGNING_KEY}
+      Services__OrderService: http://order-service:8080
+      RabbitMq__Host: rabbitmq
+      InternalApi__Key: ${INTERNAL_API_KEY}
+    ports:
+      - "5200:8080"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      order-service:
+        condition: service_started
+    restart: on-failure
+
+  # AdminService connects to CatalogDb and OrderDb (read access) in addition to its own AdminDb.
+  # It depends on catalog-service and order-service having started so their migrations have run.
+  admin-service:
+    build:
+      context: ./backend
+      dockerfile: Services/AdminService/CapShop.AdminService/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ConnectionStrings__CatalogDb: "Server=sqlserver,1433;Database=CapShopCatalog;User Id=sa;Password=${SQL_SA_PASSWORD};Encrypt=True;TrustServerCertificate=True"
+      ConnectionStrings__OrderDb: "Server=sqlserver,1433;Database=CapShopOrder;User Id=sa;Password=${SQL_SA_PASSWORD};Encrypt=True;TrustServerCertificate=True"
+      ConnectionStrings__AdminDb: "Server=sqlserver,1433;Database=CapShopAdmin;User Id=sa;Password=${SQL_SA_PASSWORD};Encrypt=True;TrustServerCertificate=True"
+      Jwt__SigningKey: ${JWT_SIGNING_KEY}
+      Redis__ConnectionString: redis:6379
+    ports:
+      - "5142:8080"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      catalog-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+    restart: on-failure
+
+  notification-service:
+    build:
+      context: ./backend
+      dockerfile: Services/NotificationService/CapShop.NotificationService/Dockerfile
+    environment:
+      DOTNET_ENVIRONMENT: Docker
+      Services__AuthService: http://auth-service:8080
+      RabbitMq__Host: rabbitmq
+      Smtp__Username: ${SMTP_USERNAME}
+      Smtp__Password: ${SMTP_PASSWORD}
+      Smtp__FromEmail: ${SMTP_FROM_EMAIL}
+      InternalApi__Key: ${INTERNAL_API_KEY}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    restart: on-failure
+
+  gateway:
+    build:
+      context: ./backend
+      dockerfile: Gateway/CapShop.Gateway/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+    ports:
+      - "5041:8080"
+    depends_on:
+      auth-service:
+        condition: service_started
+      catalog-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+      admin-service:
+        condition: service_started
+      payment-service:
+        condition: service_started
+    restart: on-failure
+
+  # ─── Frontend ─────────────────────────────────────────────────────────────
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - gateway
+
+volumes:
+  sqlserver_data:

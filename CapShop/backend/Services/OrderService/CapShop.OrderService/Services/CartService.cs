@@ -7,11 +7,13 @@ namespace CapShop.OrderService.Services;
 public class CartService : ICartService
 {
     private readonly ICartRepository _carts;
+    private readonly ICatalogHttpClient _catalog;
     private readonly ILogger<CartService> _logger;
 
-    public CartService(ICartRepository carts, ILogger<CartService> logger)
+    public CartService(ICartRepository carts, ICatalogHttpClient catalog, ILogger<CartService> logger)
     {
         _carts = carts;
+        _catalog = catalog;
         _logger = logger;
     }
 
@@ -40,6 +42,12 @@ public class CartService : ICartService
         var cart = await _carts.GetOrCreateAsync(userId);
 
         var existing = cart.Items.FirstOrDefault(i => i.ProductId == request.ProductId);
+
+        var totalRequested = (existing?.Quantity ?? 0) + request.Quantity;
+        var availableStock = await _catalog.GetStockAsync(request.ProductId);
+
+        if (availableStock < totalRequested)
+            throw new ArgumentException($"Only {availableStock} unit(s) available for this product.");
 
         if (existing is not null)
         {
@@ -74,6 +82,11 @@ public class CartService : ICartService
 
         if (item is null)
             throw new KeyNotFoundException("Cart item not found.");
+
+        var availableStock = await _catalog.GetStockAsync(item.ProductId);
+
+        if (availableStock < request.Quantity)
+            throw new ArgumentException($"Only {availableStock} unit(s) available for this product.");
 
         item.Quantity = request.Quantity;
         await _carts.UpdateItemAsync(item);

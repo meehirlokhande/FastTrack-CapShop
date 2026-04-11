@@ -1,10 +1,6 @@
 namespace CapShop.Shared.Events;
 
-public record OrderCancelledEvent(
+public record StockAdjustmentRequestedEvent(
     Guid OrderId,
-    Guid UserId,
-    decimal TotalAmount,
-    DateTime CancelledAt,
-    bool WasPaid,
     IReadOnlyList<StockAdjustItem> Items,
     string CorrelationId) : ICorrelatedEvent;

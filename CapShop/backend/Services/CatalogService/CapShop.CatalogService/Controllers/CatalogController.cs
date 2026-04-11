@@ -10,10 +10,12 @@ namespace CapShop.CatalogService.Controllers;
 public class CatalogController : ControllerBase
 {
     private readonly ICatalogService _catalog;
+    private readonly IConfiguration _config;
 
-    public CatalogController(ICatalogService catalog)
+    public CatalogController(ICatalogService catalog, IConfiguration config)
     {
         _catalog = catalog;
+        _config = config;
     }
 
     [HttpGet("health")]
@@ -53,5 +55,21 @@ public class CatalogController : ControllerBase
     {
         var product = await _catalog.GetProductByIdAsync(id);
         return Ok(product);
+    }
+
+    [HttpPatch("products/stock/batch-adjust")]
+    public async Task<IActionResult> BatchAdjustStock([FromBody] List<StockAdjustItem> items)
+    {
+        var internalKey = Request.Headers["X-Internal-Key"].FirstOrDefault();
+        var expectedKey = _config["InternalApi:Key"];
+
+        if (string.IsNullOrEmpty(internalKey) || internalKey != expectedKey)
+            return Unauthorized(new { message = "Invalid or missing internal API key." });
+
+        if (items is null || items.Count == 0)
+            return BadRequest(new { message = "No items provided." });
+
+        await _catalog.AdjustStockBatchAsync(items);
+        return NoContent();
     }
 }

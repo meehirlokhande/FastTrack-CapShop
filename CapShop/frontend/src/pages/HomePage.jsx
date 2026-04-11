@@ -19,6 +19,9 @@ const CATEGORY_ICONS = {
   clothing:           FaTshirt,
   books:              FaBook,
   "home & kitchen":   FaHome,
+  home:               FaHome,
+  kitchen:            FaUtensils,
+  health:             FaHeartbeat,
   // Common admin-added categories
   helmets:            FaHardHat,
   sports:             FaDumbbell,

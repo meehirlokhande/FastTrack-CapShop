@@ -1,29 +1,30 @@
 using System.Text;
 using System.Text.Json;
-using CapShop.NotificationService.Services;
+using CapShop.CatalogService.Services;
 using CapShop.Shared.Events;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using CatalogStockAdjustItem = CapShop.CatalogService.Dtos.StockAdjustItem;
 
-namespace CapShop.NotificationService.Workers;
+namespace CapShop.CatalogService.Workers;
 
-public class OrderNotificationWorker : BackgroundService
+public class OrderCancelledStockWorker : BackgroundService
 {
+    private const string ConsumerQueue = "capshop.order.cancelled.catalog";
+
     private readonly IConnection _connection;
     private readonly IServiceProvider _services;
-    private readonly ILogger<OrderNotificationWorker> _logger;
+    private readonly ILogger<OrderCancelledStockWorker> _logger;
 
-    public OrderNotificationWorker(
+    public OrderCancelledStockWorker(
         IConnection connection,
         IServiceProvider services,
-        ILogger<OrderNotificationWorker> logger)
+        ILogger<OrderCancelledStockWorker> logger)
     {
         _connection = connection;
         _services = services;
         _logger = logger;
     }
-
-    private const string ConsumerQueue = "capshop.order.cancelled.notifications";
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -69,7 +70,7 @@ public class OrderNotificationWorker : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing OrderCancelledEvent, nacking message");
+                _logger.LogError(ex, "Error processing OrderCancelledEvent for stock restore, nacking message");
                 await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: false);
             }
         };
@@ -85,30 +86,21 @@ public class OrderNotificationWorker : BackgroundService
 
     private async Task HandleAsync(OrderCancelledEvent evt)
     {
-        using var scope = _services.CreateScope();
-        var authClient = scope.ServiceProvider.GetRequiredService<IAuthHttpClient>();
-        var emailSender = scope.ServiceProvider.GetRequiredService<IEmailSender>();
-
-        var user = await authClient.GetUserAsync(evt.UserId);
-        if (user is null)
-        {
-            _logger.LogWarning("[{CorrelationId}] Could not resolve user {UserId} for cancellation notification",
-                evt.CorrelationId, evt.UserId);
+        // Stock was only decremented if the order was paid — only restore in that case.
+        if (!evt.WasPaid || evt.Items.Count == 0)
             return;
-        }
 
-        var subject = "Your CapShop order has been cancelled";
-        var body = $"""
-            <div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
-              <h2 style="color:#f59e0b;">Order Cancelled</h2>
-              <p>Hi {user.FullName},</p>
-              <p>Your order <code>{evt.OrderId}</code> worth <strong>₹{evt.TotalAmount:N2}</strong> has been cancelled.</p>
-              <p style="color:#555;">If this was a mistake, you can place a new order anytime.</p>
-            </div>
-            """;
+        using var scope = _services.CreateScope();
+        var catalogService = scope.ServiceProvider.GetRequiredService<ICatalogService>();
 
-        await emailSender.SendAsync(user.Email, user.FullName, subject, body);
-        _logger.LogInformation("[{CorrelationId}] Cancellation notification sent to {Email}",
-            evt.CorrelationId, user.Email);
+        var items = evt.Items
+            .Select(i => new CatalogStockAdjustItem(i.ProductId, i.Delta))
+            .ToList();
+
+        await catalogService.AdjustStockBatchAsync(items);
+
+        _logger.LogInformation(
+            "[{CorrelationId}] Stock restored for cancelled order {OrderId}: {Count} product(s)",
+            evt.CorrelationId, evt.OrderId, items.Count);
     }
 }

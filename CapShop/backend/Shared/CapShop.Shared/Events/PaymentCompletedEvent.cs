@@ -7,4 +7,5 @@ public record PaymentCompletedEvent(
     decimal Amount,
     string Status,
     string PaymentMethod,
-    DateTime CompletedAt);
+    DateTime CompletedAt,
+    string CorrelationId) : ICorrelatedEvent;

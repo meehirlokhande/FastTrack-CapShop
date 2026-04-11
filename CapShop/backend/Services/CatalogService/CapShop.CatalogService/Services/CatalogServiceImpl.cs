@@ -113,6 +113,20 @@ namespace CapShop.CatalogService.Services
             return response;
         }
 
+        public async Task AdjustStockBatchAsync(IEnumerable<StockAdjustItem> items)
+        {
+            var itemsList = items.ToList();
+
+            await _products.AdjustStockBatchAsync(itemsList.Select(i => (i.ProductId, i.Delta)));
+
+            foreach (var item in itemsList)
+                await _cache.RemoveAsync(KeyProduct(item.ProductId));
+
+            await _cache.RemoveAsync(KeyFeatured);
+
+            _logger.LogInformation("Stock adjusted for {Count} product(s)", itemsList.Count);
+        }
+
         private static ProductResponse MapProduct(Product p) => new()
         {
             Id = p.Id,

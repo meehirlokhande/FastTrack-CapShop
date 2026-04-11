@@ -86,4 +86,25 @@ public class ProductRepository : IProductRepository
             .OrderBy(c => c.Name)
             .ToListAsync();
     }
+
+    public async Task AdjustStockBatchAsync(IEnumerable<(Guid ProductId, int Delta)> adjustments)
+    {
+        var adjustList = adjustments.ToList();
+        var ids = adjustList.Select(a => a.ProductId).ToHashSet();
+
+        var products = await _db.Products
+            .Where(p => ids.Contains(p.Id))
+            .ToListAsync();
+
+        foreach (var (productId, delta) in adjustList)
+        {
+            var product = products.FirstOrDefault(p => p.Id == productId);
+            if (product is null) continue;
+
+            var newStock = product.Stock + delta;
+            product.Stock = newStock < 0 ? 0 : newStock;
+        }
+
+        await _db.SaveChangesAsync();
+    }
 }

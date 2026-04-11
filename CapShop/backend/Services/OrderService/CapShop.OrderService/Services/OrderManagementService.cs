@@ -3,6 +3,8 @@ using CapShop.OrderService.Models;
 using CapShop.OrderService.Repositories;
 using CapShop.Shared.Events;
 using CapShop.Shared.Messaging;
+using CapShop.Shared.Middleware;
+using Microsoft.AspNetCore.Http;
 
 namespace CapShop.OrderService.Services;
 
@@ -11,19 +13,29 @@ public class OrderManagementService : IOrderManagementService
     private readonly IOrderRepository _orders;
     private readonly ICartRepository _carts;
     private readonly IEventPublisher _events;
+    private readonly ICatalogHttpClient _catalog;
+    private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<OrderManagementService> _logger;
 
     public OrderManagementService(
         IOrderRepository orders,
         ICartRepository carts,
         IEventPublisher events,
+        ICatalogHttpClient catalog,
+        IHttpContextAccessor httpContextAccessor,
         ILogger<OrderManagementService> logger)
     {
         _orders = orders;
         _carts = carts;
         _events = events;
+        _catalog = catalog;
+        _httpContextAccessor = httpContextAccessor;
         _logger = logger;
     }
+
+    private string GetCorrelationId() =>
+        _httpContextAccessor.HttpContext?.Items[CorrelationIdMiddleware.ItemsKey] as string
+        ?? Guid.NewGuid().ToString("N");
 
     public async Task<OrderResponse> CheckoutAsync(Guid userId, CheckoutRequest request)
     {
@@ -37,6 +49,20 @@ public class OrderManagementService : IOrderManagementService
 
         if (cart is null || cart.Items.Count == 0)
             throw new InvalidOperationException("Cart is empty.");
+
+        // Validate current stock for all items before creating the order
+        var stockResults = await Task.WhenAll(cart.Items.Select(async item =>
+        {
+            var stock = await _catalog.GetStockAsync(item.ProductId);
+            return (item, stock);
+        }));
+
+        var insufficient = stockResults.Where(x => x.stock < x.item.Quantity).ToList();
+        if (insufficient.Count > 0)
+        {
+            var names = string.Join(", ", insufficient.Select(x => x.item.ProductName));
+            throw new InvalidOperationException($"Insufficient stock for: {names}");
+        }
 
         var order = new Order
         {
@@ -91,6 +117,16 @@ public class OrderManagementService : IOrderManagementService
 
         _logger.LogInformation(
             "Order {OrderId} payment status updated to {Status} by PaymentService", orderId, status);
+
+        if (order.Status == OrderStatus.Paid)
+        {
+            var items = order.Items
+                .Select(i => new StockAdjustItem(i.ProductId, -i.Quantity))
+                .ToList();
+
+            await _events.PublishAsync(QueueNames.StockAdjustmentRequested,
+                new StockAdjustmentRequestedEvent(orderId, items, GetCorrelationId()));
+        }
     }
 
     public async Task<List<OrderListResponse>> GetMyOrdersAsync(Guid userId)
@@ -127,14 +163,24 @@ public class OrderManagementService : IOrderManagementService
         if (order.Status >= OrderStatus.Packed)
             throw new InvalidOperationException("Cannot cancel order after it has been packed.");
 
+        var wasStockDecremented = order.Status == OrderStatus.Paid;
+
         order.Status = OrderStatus.Cancelled;
         await _orders.UpdateAsync(order);
+
+        // CatalogService restores stock via OrderCancelledEvent — no synchronous HTTP call needed.
+        var stockItems = order.Items
+            .Select(i => new StockAdjustItem(i.ProductId, i.Quantity))
+            .ToList();
 
         await _events.PublishAsync(QueueNames.OrderCancelled, new OrderCancelledEvent(
             OrderId: orderId,
             UserId: userId,
             TotalAmount: order.TotalAmount,
-            CancelledAt: DateTime.UtcNow));
+            CancelledAt: DateTime.UtcNow,
+            WasPaid: wasStockDecremented,
+            Items: stockItems,
+            CorrelationId: GetCorrelationId()));
 
         _logger.LogInformation("Order {OrderId} cancelled by user {UserId}", orderId, userId);
     }

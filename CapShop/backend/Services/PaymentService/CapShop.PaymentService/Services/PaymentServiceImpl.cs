@@ -3,27 +3,33 @@ using CapShop.PaymentService.Models;
 using CapShop.PaymentService.Repositories;
 using CapShop.Shared.Events;
 using CapShop.Shared.Messaging;
+using CapShop.Shared.Middleware;
+using Microsoft.AspNetCore.Http;
 
 namespace CapShop.PaymentService.Services;
 
 public class PaymentServiceImpl : IPaymentService
 {
     private readonly ITransactionRepository _transactions;
-    private readonly IOrderHttpClient _orderClient;
     private readonly IEventPublisher _events;
+    private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<PaymentServiceImpl> _logger;
 
     public PaymentServiceImpl(
         ITransactionRepository transactions,
-        IOrderHttpClient orderClient,
         IEventPublisher events,
+        IHttpContextAccessor httpContextAccessor,
         ILogger<PaymentServiceImpl> logger)
     {
         _transactions = transactions;
-        _orderClient = orderClient;
         _events = events;
+        _httpContextAccessor = httpContextAccessor;
         _logger = logger;
     }
+
+    private string GetCorrelationId() =>
+        _httpContextAccessor.HttpContext?.Items[CorrelationIdMiddleware.ItemsKey] as string
+        ?? Guid.NewGuid().ToString("N");
 
     public async Task<PaymentResponse> SimulateAsync(Guid userId, SimulatePaymentRequest request)
     {
@@ -55,9 +61,7 @@ public class PaymentServiceImpl : IPaymentService
 
         var orderStatus = success ? "Paid" : "PaymentFailed";
 
-        await _orderClient.UpdatePaymentStatusAsync(
-            request.OrderId, userId, orderStatus, method.ToString(), transaction.CompletedAt);
-
+        // OrderService reacts to this event to update order status and trigger stock adjustment.
         await _events.PublishAsync(QueueNames.PaymentCompleted, new PaymentCompletedEvent(
             TransactionId: transaction.Id,
             OrderId: transaction.OrderId,
@@ -65,7 +69,8 @@ public class PaymentServiceImpl : IPaymentService
             Amount: transaction.Amount,
             Status: transaction.Status.ToString(),
             PaymentMethod: method.ToString(),
-            CompletedAt: transaction.CompletedAt!.Value));
+            CompletedAt: transaction.CompletedAt!.Value,
+            CorrelationId: GetCorrelationId()));
 
         _logger.LogInformation(
             "Payment {Status} for order {OrderId}, method: {Method}, transaction: {TxId}",

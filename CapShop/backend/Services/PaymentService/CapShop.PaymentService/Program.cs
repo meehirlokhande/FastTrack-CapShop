@@ -4,6 +4,7 @@ using CapShop.PaymentService.Middleware;
 using CapShop.PaymentService.Repositories;
 using CapShop.PaymentService.Services;
 using CapShop.Shared.Messaging;
+using CapShop.Shared.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -11,6 +12,7 @@ using RabbitMQ.Client;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -31,16 +33,23 @@ builder.Services.AddSingleton<IConnection>(_ =>
         UserName = rmq["Username"] ?? "guest",
         Password = rmq["Password"] ?? "guest"
     };
-    return factory.CreateConnectionAsync().GetAwaiter().GetResult();
+
+    const int maxRetries = 10;
+    for (int attempt = 0; attempt < maxRetries; attempt++)
+    {
+        try
+        {
+            return factory.CreateConnectionAsync().GetAwaiter().GetResult();
+        }
+        catch (Exception) when (attempt < maxRetries - 1)
+        {
+            Thread.Sleep(TimeSpan.FromSeconds(Math.Pow(2, attempt)));
+        }
+    }
+
+    throw new InvalidOperationException("Failed to connect to RabbitMQ after retries.");
 });
 builder.Services.AddSingleton<IEventPublisher, RabbitMqEventPublisher>();
-
-builder.Services.AddHttpClient<IOrderHttpClient, OrderHttpClient>(client =>
-{
-    var orderBaseUrl = builder.Configuration["Services:OrderService"]
-        ?? throw new InvalidOperationException("Services:OrderService is missing");
-    client.BaseAddress = new Uri(orderBaseUrl);
-});
 
 var jwt = builder.Configuration.GetSection("Jwt");
 var signingKey = jwt["SigningKey"] ?? throw new InvalidOperationException("Jwt:SigningKey is missing");
@@ -66,6 +75,7 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())

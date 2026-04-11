@@ -14,7 +14,21 @@ builder.Services.AddSingleton<IConnection>(_ =>
         UserName = rmq["Username"] ?? "guest",
         Password = rmq["Password"] ?? "guest"
     };
-    return factory.CreateConnectionAsync().GetAwaiter().GetResult();
+
+    const int maxRetries = 10;
+    for (int attempt = 0; attempt < maxRetries; attempt++)
+    {
+        try
+        {
+            return factory.CreateConnectionAsync().GetAwaiter().GetResult();
+        }
+        catch (Exception) when (attempt < maxRetries - 1)
+        {
+            Thread.Sleep(TimeSpan.FromSeconds(Math.Pow(2, attempt)));
+        }
+    }
+
+    throw new InvalidOperationException("Failed to connect to RabbitMQ after retries.");
 });
 
 builder.Services.AddHttpClient<IAuthHttpClient, AuthHttpClient>(client =>

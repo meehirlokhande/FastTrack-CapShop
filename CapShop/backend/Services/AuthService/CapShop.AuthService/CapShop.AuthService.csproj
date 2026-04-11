@@ -7,6 +7,10 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\..\..\Shared\CapShop.Shared\CapShop.Shared.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
 		<PackageReference Include="MailKit" Version="4.15.1" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.5" />

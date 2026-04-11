@@ -9,5 +9,6 @@ namespace CapShop.CatalogService.Repositories
         Task<(List<Product> Items, int TotalCount)> GetFilteredAsync(ProductListRequest request);
         Task<List<Product>> GetFeaturedAsync(int count);
         Task<List<Category>> GetAllCategoriesAsync();
+        Task AdjustStockBatchAsync(IEnumerable<(Guid ProductId, int Delta)> adjustments);
     }
 }

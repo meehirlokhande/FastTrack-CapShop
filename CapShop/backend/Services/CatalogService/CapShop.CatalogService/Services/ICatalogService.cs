@@ -8,4 +8,5 @@ public interface ICatalogService
     Task<PagedResponse<ProductResponse>> GetProductsAsync(ProductListRequest request);
     Task<List<ProductResponse>> GetFeaturedProductsAsync();
     Task<List<CategoryResponse>> GetCategoriesAsync();
+    Task AdjustStockBatchAsync(IEnumerable<StockAdjustItem> items);
 }

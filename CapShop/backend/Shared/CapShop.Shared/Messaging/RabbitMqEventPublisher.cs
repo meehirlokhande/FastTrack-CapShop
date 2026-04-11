@@ -15,16 +15,16 @@ public class RabbitMqEventPublisher : IEventPublisher
         _logger = logger;
     }
 
-    public async Task PublishAsync<T>(string queue, T message)
+    public async Task PublishAsync<T>(string exchange, T message)
     {
         try
         {
             await using var channel = await _connection.CreateChannelAsync();
 
-            await channel.QueueDeclareAsync(
-                queue: queue,
+            await channel.ExchangeDeclareAsync(
+                exchange: exchange,
+                type: ExchangeType.Fanout,
                 durable: true,
-                exclusive: false,
                 autoDelete: false,
                 arguments: null);
 
@@ -32,18 +32,20 @@ public class RabbitMqEventPublisher : IEventPublisher
             var props = new BasicProperties { Persistent = true };
 
             await channel.BasicPublishAsync(
-                exchange: string.Empty,
-                routingKey: queue,
+                exchange: exchange,
+                routingKey: string.Empty,
                 mandatory: false,
                 basicProperties: props,
                 body: body);
 
-            _logger.LogInformation("Published {EventType} to queue {Queue}", typeof(T).Name, queue);
+            var correlationId = message is CapShop.Shared.Events.ICorrelatedEvent e ? e.CorrelationId : "-";
+            _logger.LogInformation("Published {EventType} to exchange {Exchange} [{CorrelationId}]",
+                typeof(T).Name, exchange, correlationId);
         }
         catch (Exception ex)
         {
             // Messaging failure should not roll back the primary transaction
-            _logger.LogError(ex, "Failed to publish {EventType} to queue {Queue}", typeof(T).Name, queue);
+            _logger.LogError(ex, "Failed to publish {EventType} to exchange {Exchange}", typeof(T).Name, exchange);
         }
     }
 }
